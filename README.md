@@ -1,2 +1,5 @@
 # AI supported projects
-Augment neural is list of projects built with AI models. Documenting projects which I built out of necessity.
+Augmented neural is list of projects built with support of AI. Documenting projects built out of necessity.
+
+## Linux File Permission visualizer 
+
