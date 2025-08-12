@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linux File Permissions Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Monaco', 'Consolas', monospace;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #e0e6ed;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(45deg, #00d4aa, #00a8ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .permission-section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .section-title {
+            color: #00d4aa;
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .permission-group {
+            margin-bottom: 20px;
+        }
+
+        .group-label {
+            color: #ffa726;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .checkbox-container {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .checkbox-wrapper {
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #00a8ff;
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-wrapper input[type="checkbox"]:checked {
+            background: #00a8ff;
+            transform: scale(1.1);
+        }
+
+        .checkbox-wrapper input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: -2px;
+            left: 3px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .checkbox-wrapper label {
+            cursor: pointer;
+            font-weight: 500;
+            user-select: none;
+        }
+
+        .results-section {
+            grid-column: span 2;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #00d4aa;
+        }
+
+        .result-label {
+            color: #00d4aa;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .result-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #ffffff;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .chmod-command {
+            background: #1a1a2e;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #00a8ff;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+
+        .visual-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            font-size: 2em;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            border-radius: 10px;
+            letter-spacing: 2px;
+        }
+
+        .file-type {
+            color: #ff6b6b;
+        }
+
+        .owner-perms {
+            color: #4ecdc4;
+        }
+
+        .group-perms {
+            color: #45b7d1;
+        }
+
+        .other-perms {
+            color: #96ceb4;
+        }
+
+        .quick-presets {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .preset-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .preset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .explanation {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-section {
+                grid-column: span 1;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐧 Linux File Permissions Visualizer</h1>
+        
+        <div class="main-content">
+            <div class="permission-section">
+                <div class="section-title">
+                    <span>👑</span> Owner Permissions
+                </div>
+                
+                <div class="permission-group">
+                    <div class="group-label">Owner (User)</div>
+                    <div class="checkbox-container">
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="owner-read" onchange="updatePermissions()">
+                            <label for="owner-read">Read (r)</label>
+                        </div>
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="owner-write" onchange="updatePermissions()">
+                            <label for="owner-write">Write (w)</label>
+                        </div>
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="owner-execute" onchange="updatePermissions()">
+                            <label for="owner-execute">Execute (x)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="permission-section">
+                <div class="section-title">
+                    <span>👥</span> Group Permissions
+                </div>
+                
+                <div class="permission-group">
+                    <div class="group-label">Group</div>
+                    <div class="checkbox-container">
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="group-read" onchange="updatePermissions()">
+                            <label for="group-read">Read (r)</label>
+                        </div>
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="group-write" onchange="updatePermissions()">
+                            <label for="group-write">Write (w)</label>
+                        </div>
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="group-execute" onchange="updatePermissions()">
+                            <label for="group-execute">Execute (x)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="permission-section">
+                <div class="section-title">
+                    <span>🌍</span> Others Permissions
+                </div>
+                
+                <div class="permission-group">
+                    <div class="group-label">Others</div>
+                    <div class="checkbox-container">
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="other-read" onchange="updatePermissions()">
+                            <label for="other-read">Read (r)</label>
+                        </div>
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="other-write" onchange="updatePermissions()">
+                            <label for="other-write">Write (w)</label>
+                        </div>
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="other-execute" onchange="updatePermissions()">
+                            <label for="other-execute">Execute (x)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="permission-section">
+                <div class="section-title">
+                    <span>⚡</span> Quick Presets
+                </div>
+                
+                <div class="quick-presets">
+                    <button class="preset-btn" onclick="setPreset(755)">755 (rwxr-xr-x)</button>
+                    <button class="preset-btn" onclick="setPreset(644)">644 (rw-r--r--)</button>
+                    <button class="preset-btn" onclick="setPreset(777)">777 (rwxrwxrwx)</button>
+                    <button class="preset-btn" onclick="setPreset(600)">600 (rw-------)</button>
+                    <button class="preset-btn" onclick="setPreset(664)">664 (rw-rw-r--)</button>
+                    <button class="preset-btn" onclick="setPreset(000)">000 (---------)</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-section">
+            <div class="section-title">
+                <span>📊</span> Results
+            </div>
+            
+            <div class="visual-display" id="visual-display">
+                <span class="file-type">-</span>
+                <span class="owner-perms">---</span>
+                <span class="group-perms">---</span>
+                <span class="other-perms">---</span>
+            </div>
+
+            <div class="results-grid">
+                <div class="result-item">
+                    <div class="result-label">Octal Notation</div>
+                    <div class="result-value" id="octal-result">000</div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-label">Permission Display (ls -l)</div>
+                    <div class="result-value" id="symbolic-result">---------</div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-label">Chmod Command (Octal)</div>
+                    <div class="chmod-command" id="chmod-octal">chmod 000 filename</div>
+                </div>
+                
+                <div class="result-item">
+                    <div class="result-label">Chmod Command (Symbolic)</div>
+                    <div class="chmod-command" id="chmod-symbolic">chmod ---------- filename</div>
+                </div>
+            </div>
+
+            <div class="explanation" id="explanation">
+                Select permissions above to see how they translate to octal and symbolic notation. Click the preset buttons for common permission combinations!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getPermissionValue(category) {
+            const read = document.getElementById(`${category}-read`).checked;
+            const write = document.getElementById(`${category}-write`).checked;
+            const execute = document.getElementById(`${category}-execute`).checked;
+            
+            let value = 0;
+            if (read) value += 4;
+            if (write) value += 2;
+            if (execute) value += 1;
+            
+            return value;
+        }
+
+        function getSymbolicNotation(category) {
+            const read = document.getElementById(`${category}-read`).checked;
+            const write = document.getElementById(`${category}-write`).checked;
+            const execute = document.getElementById(`${category}-execute`).checked;
+            
+            return (read ? 'r' : '-') + (write ? 'w' : '-') + (execute ? 'x' : '-');
+        }
+
+        function generateSymbolicChmod() {
+            const commands = [];
+            
+            // Check each category and permission
+            const categories = ['owner', 'group', 'other'];
+            const permissions = ['read', 'write', 'execute'];
+            const categoryLetters = ['u', 'g', 'o'];
+            const permissionLetters = ['r', 'w', 'x'];
+            
+            for (let i = 0; i < categories.length; i++) {
+                const categoryPerms = [];
+                for (let j = 0; j < permissions.length; j++) {
+                    if (document.getElementById(`${categories[i]}-${permissions[j]}`).checked) {
+                        categoryPerms.push(permissionLetters[j]);
+                    }
+                }
+                if (categoryPerms.length > 0) {
+                    commands.push(`${categoryLetters[i]}+${categoryPerms.join('')}`);
+                }
+            }
+            
+            return commands.length > 0 ? commands.join(',') : 'a-rwx';
+        }
+
+        function updatePermissions() {
+            const ownerValue = getPermissionValue('owner');
+            const groupValue = getPermissionValue('group');
+            const otherValue = getPermissionValue('other');
+            
+            const octal = `${ownerValue}${groupValue}${otherValue}`;
+            const symbolic = `-${getSymbolicNotation('owner')}${getSymbolicNotation('group')}${getSymbolicNotation('other')}`;
+            const symbolicChmod = generateSymbolicChmod();
+            
+            // Update display
+            document.getElementById('octal-result').textContent = octal;
+            document.getElementById('symbolic-result').textContent = symbolic;
+            document.getElementById('chmod-octal').textContent = `chmod ${octal} filename`;
+            document.getElementById('chmod-symbolic').textContent = `chmod ${symbolicChmod} filename`;
+            
+            // Update visual display
+            const visual = document.getElementById('visual-display');
+            visual.innerHTML = `
+                <span class="file-type">-</span>
+                <span class="owner-perms">${getSymbolicNotation('owner')}</span>
+                <span class="group-perms">${getSymbolicNotation('group')}</span>
+                <span class="other-perms">${getSymbolicNotation('other')}</span>
+            `;
+            
+            // Update explanation
+            updateExplanation(octal, symbolic);
+        }
+
+        function updateExplanation(octal, symbolic) {
+            const explanations = {
+                '000': 'No permissions - completely locked down',
+                '600': 'Owner can read and write, others have no access',
+                '644': 'Owner can read/write, group and others can only read',
+                '664': 'Owner and group can read/write, others can only read',
+                '755': 'Owner has full access, group and others can read and execute',
+                '777': 'Full permissions for everyone - potentially dangerous!'
+            };
+            
+            const explanation = explanations[octal] || `Custom permission: ${symbolic}`;
+            document.getElementById('explanation').textContent = explanation;
+        }
+
+        function setPreset(preset) {
+            const presetStr = preset.toString().padStart(3, '0');
+            const digits = presetStr.split('').map(Number);
+            
+            // Clear all checkboxes first
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            
+            // Set owner permissions
+            if (digits[0] & 4) document.getElementById('owner-read').checked = true;
+            if (digits[0] & 2) document.getElementById('owner-write').checked = true;
+            if (digits[0] & 1) document.getElementById('owner-execute').checked = true;
+            
+            // Set group permissions
+            if (digits[1] & 4) document.getElementById('group-read').checked = true;
+            if (digits[1] & 2) document.getElementById('group-write').checked = true;
+            if (digits[1] & 1) document.getElementById('group-execute').checked = true;
+            
+            // Set other permissions
+            if (digits[2] & 4) document.getElementById('other-read').checked = true;
+            if (digits[2] & 2) document.getElementById('other-write').checked = true;
+            if (digits[2] & 1) document.getElementById('other-execute').checked = true;
+            
+            updatePermissions();
+        }
+
+        // Initialize
+        updatePermissions();
+    </script>
+</body>
+</html>
