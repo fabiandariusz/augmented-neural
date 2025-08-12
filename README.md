@@ -8,3 +8,8 @@ Augmented neural is list of projects built with support of AI. Documenting proje
 
   ![File Permission visualizer](./Linux-File-Permission/file_permission1.gif)
 
+### Linux File System
+- A interactive HTML with [linux file system](https://github.com/fabiandariusz/augmented-neural/tree/main/linux-file-system) and description.
+- Link to artifact published on [Claude](https://claude.ai/public/artifacts/70cd40c4-bd48-4b7e-843b-cf4ec67d31cc)
+
+![Linux File System](./linux-file-system/file_system1.gif)
