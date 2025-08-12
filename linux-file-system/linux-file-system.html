@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linux File System Structure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a2e;
+            color: #eee;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #0f1419;
+            padding: 15px 20px;
+            border-bottom: 2px solid #4fc3f7;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        h1 {
+            color: #4fc3f7;
+            font-size: 1.8em;
+            margin: 0;
+        }
+        
+        .category-legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        
+        .two-column-layout {
+            display: flex;
+            height: calc(100vh - 70px);
+        }
+        
+        /* Left Column - File Directory */
+        .left-column {
+            width: 50%;
+            background: #16213e;
+            border-right: 2px solid #4fc3f7;
+            padding: 20px;
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+        
+        .filesystem-tree {
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        
+        .directory {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 3px 6px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+        
+        .directory:hover {
+            background: #2a4365;
+            color: #81e6d9;
+        }
+        
+        .directory.highlight {
+            background: #2a4365;
+            color: #81e6d9;
+        }
+        
+        .root { color: #ff6b6b; font-weight: bold; font-size: 16px; }
+        .system { color: #4ecdc4; }
+        .config { color: #ffe66d; }
+        .user { color: #a8e6cf; }
+        .runtime { color: #ff8b94; }
+        .device { color: #d4a5ff; }
+        
+        .tree-lines {
+            color: #666;
+        }
+        
+        .tree-comment {
+            color: #888;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        /* Right Column - Description */
+        .right-column {
+            width: 50%;
+            background: #0f1419;
+            padding: 30px;
+            overflow-y: auto;
+        }
+        
+        .description-title {
+            color: #4fc3f7;
+            font-weight: bold;
+            font-size: 20px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #2a4365;
+        }
+        
+        .description-content {
+            color: #eee;
+            line-height: 1.8;
+            font-size: 14px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .welcome-message {
+            background: #2a4365;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #4fc3f7;
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #0f1419;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #4fc3f7;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #29b6f6;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .two-column-layout {
+                flex-direction: column;
+            }
+            
+            .left-column, .right-column {
+                width: 100%;
+                height: 50%;
+            }
+            
+            .left-column {
+                border-right: none;
+                border-bottom: 2px solid #4fc3f7;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🐧 Linux File System Hierarchy</h1>
+        <div class="category-legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff6b6b;"></div>
+                <span>Root</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #4ecdc4;"></div>
+                <span>System</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ffe66d;"></div>
+                <span>Config</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #a8e6cf;"></div>
+                <span>User</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff8b94;"></div>
+                <span>Runtime</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #d4a5ff;"></div>
+                <span>Devices</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="two-column-layout">
+        <div class="left-column">
+            <div class="filesystem-tree">
+<pre>
+<span class="directory root" data-dir="root">/ (root)</span>
+<span class="tree-lines">├──</span> <span class="directory system" data-dir="bin">bin/</span><span class="tree-comment">← Essential user commands</span>
+<span class="tree-lines">├──</span> <span class="directory system" data-dir="sbin">sbin/</span><span class="tree-comment">← System admin commands</span>
+<span class="tree-lines">├──</span> <span class="directory system" data-dir="usr">usr/</span><span class="tree-comment">← User programs & libraries</span>
+<span class="tree-lines">│   ├──</span> <span class="directory system" data-dir="usr-bin">bin/</span><span class="tree-comment">← User commands</span>
+<span class="tree-lines">│   ├──</span> <span class="directory system" data-dir="usr-sbin">sbin/</span><span class="tree-comment">← Non-essential system commands</span>
+<span class="tree-lines">│   ├──</span> <span class="directory system" data-dir="usr-lib">lib/</span><span class="tree-comment">← Libraries for /usr/bin & /usr/sbin</span>
+<span class="tree-lines">│   ├──</span> <span class="directory system" data-dir="usr-local">local/</span><span class="tree-comment">← Locally installed software</span>
+<span class="tree-lines">│   └──</span> <span class="directory user" data-dir="usr-share">share/</span><span class="tree-comment">← Documentation, data files</span>
+<span class="tree-lines">├──</span> <span class="directory system" data-dir="lib">lib/</span><span class="tree-comment">← Essential shared libraries</span>
+<span class="tree-lines">├──</span> <span class="directory system" data-dir="lib64">lib64/</span><span class="tree-comment">← 64-bit libraries</span>
+<span class="tree-lines">├──</span> <span class="directory config" data-dir="etc">etc/</span><span class="tree-comment">← System configuration files</span>
+<span class="tree-lines">│   ├──</span> <span class="directory config" data-dir="etc-apt">apt/</span><span class="tree-comment">← APT package manager config</span>
+<span class="tree-lines">│   ├──</span> <span class="directory config" data-dir="etc-systemd">systemd/</span><span class="tree-comment">← Systemd service configs</span>
+<span class="tree-lines">│   └──</span> <span class="directory config" data-dir="etc-ssh">ssh/</span><span class="tree-comment">← SSH configuration</span>
+<span class="tree-lines">├──</span> <span class="directory user" data-dir="home">home/</span><span class="tree-comment">← User home directories</span>
+<span class="tree-lines">│   ├──</span> <span class="directory user" data-dir="home-user">username/</span><span class="tree-comment">← Individual user folders</span>
+<span class="tree-lines">│   └──</span> <span class="directory user" data-dir="home-other">...</span>
+<span class="tree-lines">├──</span> <span class="directory user" data-dir="root-home">root/</span><span class="tree-comment">← Root user's home directory</span>
+<span class="tree-lines">├──</span> <span class="directory runtime" data-dir="tmp">tmp/</span><span class="tree-comment">← Temporary files</span>
+<span class="tree-lines">├──</span> <span class="directory runtime" data-dir="var">var/</span><span class="tree-comment">← Variable data (logs, databases)</span>
+<span class="tree-lines">│   ├──</span> <span class="directory runtime" data-dir="var-log">log/</span><span class="tree-comment">← System log files</span>
+<span class="tree-lines">│   ├──</span> <span class="directory runtime" data-dir="var-cache">cache/</span><span class="tree-comment">← Application cache data</span>
+<span class="tree-lines">│   ├──</span> <span class="directory runtime" data-dir="var-lib">lib/</span><span class="tree-comment">← Variable state information</span>
+<span class="tree-lines">│   └──</span> <span class="directory runtime" data-dir="var-www">www/</span><span class="tree-comment">← Web server files</span>
+<span class="tree-lines">├──</span> <span class="directory runtime" data-dir="run">run/</span><span class="tree-comment">← Runtime data (since last boot)</span>
+<span class="tree-lines">├──</span> <span class="directory device" data-dir="dev">dev/</span><span class="tree-comment">← Device files</span>
+<span class="tree-lines">├──</span> <span class="directory device" data-dir="proc">proc/</span><span class="tree-comment">← Process & kernel information</span>
+<span class="tree-lines">├──</span> <span class="directory device" data-dir="sys">sys/</span><span class="tree-comment">← System & hardware information</span>
+<span class="tree-lines">├──</span> <span class="directory user" data-dir="media">media/</span><span class="tree-comment">← Removable media mount points</span>
+<span class="tree-lines">├──</span> <span class="directory user" data-dir="mnt">mnt/</span><span class="tree-comment">← Temporary mount points</span>
+<span class="tree-lines">├──</span> <span class="directory user" data-dir="opt">opt/</span><span class="tree-comment">← Optional/additional software</span>
+<span class="tree-lines">├──</span> <span class="directory user" data-dir="srv">srv/</span><span class="tree-comment">← Service data</span>
+<span class="tree-lines">└──</span> <span class="directory system" data-dir="boot">boot/</span><span class="tree-comment">← Boot loader files</span>
+</pre>
+            </div>
+        </div>
+
+        <div class="right-column">
+            <div class="description-title" id="desc-title">Welcome to Linux File System Explorer</div>
+            <div class="description-content" id="desc-content">
+                The Linux file system follows the Filesystem Hierarchy Standard (FHS), which defines where different types of files should be located. This creates consistency across different Linux distributions and makes system administration more predictable.
+                
+                <div class="welcome-message">
+                    <strong>💡 Tip:</strong> Click on any directory in the tree on the left to view its detailed description here. Each directory has a specific purpose in the Linux ecosystem, and understanding this structure is fundamental to mastering Linux system administration.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const descriptions = {
+            'root': {
+                title: '/ (Root Directory)',
+                content: 'This is the top-level directory of the entire file system. Everything in Linux starts here. Think of it as the foundation of a building - all other directories branch out from this single point. Unlike Windows with multiple drive letters, Linux has one unified tree structure starting from /. Every file and directory on your system can be traced back to this root.'
+            },
+            'bin': {
+                title: '/bin - Essential User Commands',
+                content: 'Contains essential executable programs that all users need, like `ls`, `cp`, `mv`, `cat`, `grep`, and `bash`. These are the basic commands you use every day in the terminal. The "bin" stands for "binary" (executable files). These programs must be available even when other file systems aren\'t mounted, making them crucial for system recovery and maintenance.'
+            },
+            'sbin': {
+                title: '/sbin - System Administrator Commands',
+                content: 'Contains essential system administration programs like `fsck` (file system check), `mount`, `init`, and `shutdown`. The "s" stands for "system" or "superuser". Regular users typically can\'t run these programs directly, as they require administrative privileges. These tools are critical for system boot, maintenance, and recovery operations.'
+            },
+            'usr': {
+                title: '/usr - User Programs and Data',
+                content: 'This is like a secondary hierarchy containing user-accessible programs, libraries, and documentation. Most of your installed applications end up here. Think of it as the "programs" folder - it contains subdirectories like bin/, lib/, share/, and more. Originally standing for "user", it\'s now better understood as "Unix System Resources". This is typically the largest directory on a Linux system.'
+            },
+            'usr-bin': {
+                title: '/usr/bin - User Commands',
+                content: 'Contains most of the executable programs for regular users that aren\'t essential for system boot. This includes text editors, compilers, network tools, and most applications you install. If /bin contains survival tools, /usr/bin contains your daily toolkit. Programs here include things like firefox, gcc, python, and thousands of other applications.'
+            },
+            'usr-sbin': {
+                title: '/usr/sbin - Non-essential System Commands',
+                content: 'Contains system administration programs that aren\'t essential for booting or repairing the system. These are administrative tools you use once the system is running normally, like network configuration utilities, service management tools, and system monitoring applications. Examples include Apache web server control scripts and database management tools.'
+            },
+            'usr-lib': {
+                title: '/usr/lib - Libraries',
+                content: 'Contains shared libraries (like .so files) that are used by programs in /usr/bin and /usr/sbin. Think of libraries as collections of reusable code that multiple programs can use. This prevents programs from having to include the same code over and over, saving disk space and memory. Also contains architecture-specific data files.'
+            },
+            'usr-local': {
+                title: '/usr/local - Locally Installed Software',
+                content: 'This is where software compiled from source or installed manually (not through the package manager) typically goes. It mirrors the structure of /usr with its own bin/, lib/, and share/ subdirectories. This keeps locally installed software separate from distribution-provided software, preventing conflicts during system updates.'
+            },
+            'usr-share': {
+                title: '/usr/share - Shared Data',
+                content: 'Contains architecture-independent data files like documentation, man pages, icons, themes, and application data files. This is where you\'ll find things like help files, templates, fonts, and resources that programs need but aren\'t executable code. The files here can be shared across different architectures.'
+            },
+            'lib': {
+                title: '/lib - Essential Shared Libraries',
+                content: 'Contains the shared libraries that are essential for the programs in /bin and /sbin to run. These are the core libraries needed to boot the system and run essential commands. Think of them as the fundamental building blocks that essential programs depend on. Includes the C library and kernel modules.'
+            },
+            'lib64': {
+                title: '/lib64 - 64-bit Libraries',
+                content: 'On 64-bit systems, this contains 64-bit versions of essential libraries. This separation allows systems to run both 32-bit and 64-bit programs. It\'s essentially the 64-bit equivalent of /lib, ensuring compatibility with modern 64-bit applications while maintaining backward compatibility.'
+            },
+            'etc': {
+                title: '/etc - Configuration Files',
+                content: 'Contains system-wide configuration files and shell scripts used to boot and initialize system settings. This is like the "control panel" of Linux - everything from user accounts (/etc/passwd) to network settings (/etc/hosts) to service configurations. The name comes from "et cetera" but is often interpreted as "Editable Text Configuration". Always back up this directory before major system changes!'
+            },
+            'etc-apt': {
+                title: '/etc/apt - APT Configuration',
+                content: 'Contains configuration files for the APT package management system (used in Debian-based distributions like Ubuntu). This includes sources.list which defines where to download packages from, and various configuration options for how APT behaves when installing, updating, or removing software.'
+            },
+            'etc-systemd': {
+                title: '/etc/systemd - Systemd Configuration',
+                content: 'Contains configuration files for systemd, the init system and service manager used by most modern Linux distributions. This includes service unit files, timer configurations, and system-wide systemd settings. Custom service definitions and overrides are typically placed here.'
+            },
+            'etc-ssh': {
+                title: '/etc/ssh - SSH Configuration',
+                content: 'Contains SSH (Secure Shell) configuration files including sshd_config for the SSH server and ssh_config for the SSH client. Also stores host keys that identify your system to SSH clients. Proper configuration here is crucial for secure remote access to your system.'
+            },
+            'home': {
+                title: '/home - User Home Directories',
+                content: 'Contains the personal directories for all regular users. Each user gets their own subdirectory here (like /home/john, /home/mary). This is where users store their personal files, documents, settings, and configurations. It\'s like the "Users" folder in Windows. Often mounted on a separate partition to protect user data during system reinstalls.'
+            },
+            'home-user': {
+                title: '/home/username - Individual User Directory',
+                content: 'Each user\'s personal space where they can store files, customize settings, and install personal applications. Contains subdirectories like Documents/, Downloads/, Pictures/, and hidden configuration files starting with dots (.bashrc, .profile, .config/). Users have full control over their home directory and it\'s private by default.'
+            },
+            'root-home': {
+                title: '/root - Root User Home',
+                content: 'This is the home directory for the root (administrator) user. It\'s separate from /home because root needs to be accessible even when /home might be on a different partition that isn\'t mounted. Root is the superuser with complete system access. For security, you should rarely log in as root directly.'
+            },
+            'tmp': {
+                title: '/tmp - Temporary Files',
+                content: 'A place for programs to store temporary files that don\'t need to persist between reboots. The system typically clears this directory on startup. It\'s like a scratch pad that programs can use for temporary storage during operations. Any user can write here, but special permissions prevent users from deleting each other\'s files.'
+            },
+            'var': {
+                title: '/var - Variable Data',
+                content: 'Contains files that are expected to grow or change during system operation. This includes log files, databases, caches, email, and spool files. The name comes from "variable" because the contents vary over time. Think of it as the system\'s workspace for ongoing operations. Often placed on a separate partition to prevent filled logs from crashing the system.'
+            },
+            'var-log': {
+                title: '/var/log - Log Files',
+                content: 'Contains system and application log files that record what\'s happening on your system. Files like syslog/messages (system messages), auth.log (authentication attempts), and application-specific logs. Essential for troubleshooting and monitoring system health. Log rotation prevents these from consuming all disk space.'
+            },
+            'var-cache': {
+                title: '/var/cache - Cache Data',
+                content: 'Contains cached data from applications that can be regenerated if needed. This includes package manager caches (downloaded .deb or .rpm files), thumbnail caches, and temporary application data that speeds up operations but isn\'t critical to keep permanently. Can be safely cleaned to free up space.'
+            },
+            'var-lib': {
+                title: '/var/lib - Variable State Information',
+                content: 'Contains persistent data files that programs modify during operation. This includes databases (MySQL, PostgreSQL), package manager state, Docker images, and application data that needs to persist between runs. Unlike cache, this data is important and shouldn\'t be casually deleted.'
+            },
+            'var-www': {
+                title: '/var/www - Web Server Files',
+                content: 'The default location for web server content in many Linux distributions. Typically contains subdirectories like html/ for static web pages. Apache and Nginx often serve files from here by default, though this can be configured. This is where you\'d place your website files on a web server.'
+            },
+            'run': {
+                title: '/run - Runtime Data',
+                content: 'Contains runtime data that\'s only valid until the next boot. This includes process IDs (PIDs), socket files, and other runtime information. It\'s typically stored in RAM (tmpfs) for fast access and is automatically cleared on reboot. Replaced the older /var/run in modern systems.'
+            },
+            'dev': {
+                title: '/dev - Device Files',
+                content: 'Contains special files that represent hardware devices and other system resources. In Linux, "everything is a file," so your hard drive might be /dev/sda, your terminal /dev/tty1, and random number generator /dev/random. These aren\'t regular files but interfaces to hardware and system features. Created dynamically by udev.'
+            },
+            'proc': {
+                title: '/proc - Process Information',
+                content: 'A virtual file system that provides information about running processes and kernel parameters. Files here aren\'t real files on disk but live views into system state. For example, /proc/cpuinfo shows CPU details, /proc/meminfo shows memory usage. Each running process has a subdirectory identified by its PID.'
+            },
+            'sys': {
+                title: '/sys - System Information',
+                content: 'Another virtual file system that exposes kernel objects, their attributes, and relationships. It provides a more structured view of system and hardware information than /proc. Modern way to interact with and configure kernel parameters and device settings. Used extensively by system management tools.'
+            },
+            'media': {
+                title: '/media - Removable Media',
+                content: 'Mount points for removable media like USB drives, CD-ROMs, and external hard drives. When you plug in a USB drive, it often gets automatically mounted under /media/username/drive-name. This keeps removable storage organized and predictable. Desktop environments typically handle the automatic mounting.'
+            },
+            'mnt': {
+                title: '/mnt - Mount Points',
+                content: 'Traditional mount point for temporarily mounting file systems. System administrators use this when they need to manually mount a file system for maintenance or access. It\'s like a temporary parking spot for additional storage. Unlike /media, this is typically used for manual mounts rather than automatic ones.'
+            },
+            'opt': {
+                title: '/opt - Optional Software',
+                content: 'Contains add-on software packages that aren\'t part of the default installation. Large applications sometimes install here in self-contained directories (like /opt/google/chrome). It keeps optional software separate from the core system. Commercial software often prefers this location.'
+            },
+            'srv': {
+                title: '/srv - Service Data',
+                content: 'Contains data for services provided by the system. For example, /srv/www might contain web server data, /srv/ftp for FTP server files. This keeps service data separate from applications (/usr) and variable data (/var). Not all distributions use this directory extensively.'
+            },
+            'boot': {
+                title: '/boot - Boot Files',
+                content: 'Contains files needed to boot the system, including the Linux kernel, initial ramdisk (initrd/initramfs), and bootloader configuration (GRUB). This is often on a separate partition to ensure the system can always access these critical boot files. Never delete files here unless you know what you\'re doing!'
+            }
+        };
+
+        // Add click handlers to all directories
+        document.querySelectorAll('.directory').forEach(dir => {
+            dir.addEventListener('click', function() {
+                // Remove previous highlights
+                document.querySelectorAll('.directory').forEach(d => d.classList.remove('highlight'));
+                
+                // Highlight clicked directory
+                this.classList.add('highlight');
+                
+                const dirKey = this.getAttribute('data-dir');
+                const desc = descriptions[dirKey];
+                
+                if (desc) {
+                    document.getElementById('desc-title').textContent = desc.title;
+                    document.getElementById('desc-content').innerHTML = desc.content;
+                }
+            });
+        });
+
+        // Show root directory info by default
+        document.querySelector('[data-dir="root"]').click();
+    </script>
+</body>
+</html>
